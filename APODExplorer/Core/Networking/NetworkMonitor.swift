@@ -4,9 +4,9 @@
 //
 //  Created by Sanjay Kumar on 23/04/2026.
 //
-//  Reports connectivity state as an AsyncStream. Used by the repository to
-//  skip the network entirely when we already know we're offline — which
-//  turns a 15-second timeout into an immediate cache hit.
+//  Wraps NWPathMonitor to give the repository a fast offline check. Used to
+//  short-circuit to cache instead of waiting for a 15-second URLSession
+//  timeout when we already know we're offline.
 //
 
 import Foundation
