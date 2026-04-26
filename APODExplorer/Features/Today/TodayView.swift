@@ -64,7 +64,8 @@ struct TodayView: View {
             Button {
                 viewModel.isShowingDatePicker = true
             } label: {
-                Image(systemName: "calendar")
+                Label("Choose Date", systemImage: "calendar")
+                    .labelStyle(.iconOnly)
             }
             .accessibilityLabel("Choose date")
             .accessibilityHint("Opens date picker to browse APOD for any day")
@@ -77,6 +78,12 @@ struct TodayView: View {
 private struct LoadedView: View {
     let result: APODResult
     let mediaLoader: MediaLoading
+
+    /// Maximum width for the content column. On iPhone (≤ ~430pt wide) this
+    /// has no effect because the device is narrower. On iPad it caps line
+    /// length around the 600-700pt sweet spot Apple HIG recommends for
+    /// readable body text.
+    private let maxContentWidth: CGFloat = 700
 
     var body: some View {
         ScrollView {
@@ -110,6 +117,8 @@ private struct LoadedView: View {
                 }
                 .padding(.horizontal, 4)
             }
+            .frame(maxWidth: maxContentWidth)
+            .frame(maxWidth: .infinity)  // Centers the constrained column
             .padding()
         }
     }
@@ -144,6 +153,7 @@ private struct LoadingView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("Loading today's picture")
     }
 }
 
@@ -181,6 +191,7 @@ private struct OfflineBadge: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "wifi.slash")
+                .accessibilityHidden(true)
             Text("Offline — showing last saved picture")
         }
         .font(.caption.weight(.medium))
@@ -190,11 +201,13 @@ private struct OfflineBadge: View {
         .foregroundStyle(Color.orange)
         .clipShape(Capsule())
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("Offline. Showing the last saved picture.")
     }
 }
 
 // MARK: - Previews
 
+#if DEBUG
 #Preview("Loaded — Image") {
     TodayView(
         viewModel: PreviewMocks.loadedImageViewModel(),
@@ -245,4 +258,6 @@ private struct OfflineBadge: View {
     )
     .environment(\.dynamicTypeSize, .accessibility3)
 }
+#endif
+
 
