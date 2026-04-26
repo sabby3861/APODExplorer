@@ -19,29 +19,29 @@ protocol APODMetadataStore: Sendable {
 actor DefaultAPODMetadataStore: APODMetadataStore {
     private let fileURL: URL
     private let fileManager: FileManager
-
+    
     init(fileManager: FileManager = .default, directory: URL? = nil) {
         self.fileManager = fileManager
-        let baseDirectory = directory ?? Self.cachesDirectory(fileManager: fileManager)
-        let cacheDirectory = baseDirectory.appendingPathComponent("APODCache", isDirectory: true)
-        if !fileManager.fileExists(atPath: cacheDirectory.path) {
-            try? fileManager.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+        let baseDirectory = directory ?? Self.appSupportDirectory(fileManager: fileManager)
+        let storeDirectory = baseDirectory.appendingPathComponent("APODStore", isDirectory: true)
+        if !fileManager.fileExists(atPath: storeDirectory.path) {
+            try? fileManager.createDirectory(at: storeDirectory, withIntermediateDirectories: true)
         }
-        self.fileURL = cacheDirectory.appendingPathComponent("latest.json")
+        self.fileURL = storeDirectory.appendingPathComponent("latest.json")
     }
-
-    private static func cachesDirectory(fileManager: FileManager) -> URL {
-        fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
-            ?? fileManager.temporaryDirectory
+    
+    private static func appSupportDirectory(fileManager: FileManager) -> URL {
+        fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        ?? fileManager.temporaryDirectory
     }
-
+    
     func load() async -> APOD? {
         guard let data = try? Data(contentsOf: fileURL) else { return nil }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try? decoder.decode(APOD.self, from: data)
     }
-
+    
     func save(_ apod: APOD) async {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -50,7 +50,7 @@ actor DefaultAPODMetadataStore: APODMetadataStore {
         // killed mid-save.
         try? data.write(to: fileURL, options: .atomic)
     }
-
+    
     func clear() async {
         try? fileManager.removeItem(at: fileURL)
     }

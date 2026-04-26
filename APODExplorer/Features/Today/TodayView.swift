@@ -10,9 +10,9 @@ import SwiftUI
 struct TodayView: View {
     @Bindable var viewModel: TodayViewModel
     let mediaLoader: MediaLoading
-
+    
     @Environment(\.scenePhase) private var scenePhase
-
+    
     var body: some View {
         NavigationStack {
             contentView
@@ -43,7 +43,7 @@ struct TodayView: View {
                 }
         }
     }
-
+    
     @ViewBuilder
     private var contentView: some View {
         switch viewModel.state {
@@ -57,7 +57,7 @@ struct TodayView: View {
             }
         }
     }
-
+    
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
@@ -78,38 +78,38 @@ struct TodayView: View {
 private struct LoadedView: View {
     let result: APODResult
     let mediaLoader: MediaLoading
-
+    
     /// Maximum width for the content column. On iPhone (≤ ~430pt wide) this
     /// has no effect because the device is narrower. On iPad it caps line
     /// length around the 600-700pt sweet spot Apple HIG recommends for
     /// readable body text.
     private let maxContentWidth: CGFloat = 700
-
+    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if result.source == .cache {
                     OfflineBadge()
                 }
-
+                
                 MediaView(apod: result.apod, mediaLoader: mediaLoader)
-
+                
                 VStack(alignment: .leading, spacing: 8) {
                     Text(formattedDate)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .accessibilityLabel("Date: \(accessibleDate)")
-
+                    
                     Text(result.apod.title)
                         .font(.title2.weight(.semibold))
                         .fixedSize(horizontal: false, vertical: true)
-
+                    
                     if let copyright = result.apod.copyright {
                         Text("© \(copyright)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-
+                    
                     Text(result.apod.explanation)
                         .font(.body)
                         .fixedSize(horizontal: false, vertical: true)
@@ -122,7 +122,7 @@ private struct LoadedView: View {
             .padding()
         }
     }
-
+    
     // The APOD's date represents NASA's calendar day in GMT. We read it in
     // GMT so users west of UTC don't see yesterday's label for today's APOD.
     // `Date.FormatStyle` (iOS 15+) is the modern, cached, locale-aware API —
@@ -132,7 +132,7 @@ private struct LoadedView: View {
             Date.FormatStyle(date: .long, time: .omitted, timeZone: .gmt)
         )
     }
-
+    
     private var accessibleDate: String {
         result.apod.date.formatted(
             Date.FormatStyle(date: .complete, time: .omitted, timeZone: .gmt)
@@ -162,19 +162,19 @@ private struct LoadingView: View {
 private struct ErrorView: View {
     let error: APODError
     let onRetry: () -> Void
-
+    
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
                 .foregroundStyle(.orange)
                 .accessibilityHidden(true)
-
+            
             Text(error.userMessage)
                 .font(.body)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-
+            
             Button("Try Again", action: onRetry)
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -207,7 +207,6 @@ private struct OfflineBadge: View {
 
 // MARK: - Previews
 
-#if DEBUG
 #Preview("Loaded — Image") {
     TodayView(
         viewModel: PreviewMocks.loadedImageViewModel(),
@@ -258,6 +257,3 @@ private struct OfflineBadge: View {
     )
     .environment(\.dynamicTypeSize, .accessibility3)
 }
-#endif
-
-

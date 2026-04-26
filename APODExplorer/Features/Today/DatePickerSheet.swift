@@ -14,7 +14,7 @@ struct DatePickerSheet: View {
     @State private var internalDate: Date
     let onSelect: (APODDate) -> Void
     let onCancel: () -> Void
-
+    
     init(
         selectedDate: APODDate,
         onSelect: @escaping (APODDate) -> Void,
@@ -24,7 +24,7 @@ struct DatePickerSheet: View {
         self.onSelect = onSelect
         self.onCancel = onCancel
     }
-
+    
     var body: some View {
         NavigationStack {
             VStack {
@@ -40,7 +40,7 @@ struct DatePickerSheet: View {
                 .datePickerStyle(.graphical)
                 .labelsHidden()
                 .padding()
-
+                
                 Spacer()
             }
             .navigationTitle("Choose a Date")
@@ -65,7 +65,6 @@ struct DatePickerSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
     }
 }
 

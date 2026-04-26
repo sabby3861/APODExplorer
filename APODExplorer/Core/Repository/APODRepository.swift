@@ -53,11 +53,13 @@ actor DefaultAPODRepository: APODRepository {
     }
     
     func fetchAPOD(for date: APODDate) async throws -> APODResult {
-        // If we already know we're offline, we skip the timeout and go straight
-        // to cache. Same contract (cache only when dates match), just faster
-        // when offline.
+        // If we already know we're offline, skip the timeout and go straight
+        // to cache. The brief: "last service call should be cached and
+        // loaded if any subsequent service call fails." We honour that
+        // literally — if we have any cached APOD, serve it with the offline
+        // source flag, even if the requested date doesn't match.
         if await !networkMonitor.isReachable {
-            if let cached = await cachedResult(matching: date) {
+            if let cached = await cachedResultIfAvailable() {
                 return cached
             }
             throw APODError.network(underlying: URLError(.notConnectedToInternet))
@@ -68,10 +70,9 @@ actor DefaultAPODRepository: APODRepository {
             await metadataStore.save(fresh)
             return APODResult(apod: fresh, source: .fresh)
         } catch {
-            if let cached = await cachedResult(matching: date) {
+            if let cached = await cachedResultIfAvailable() {
                 return cached
             }
-            
             if let apodError = error as? APODError {
                 throw apodError
             }
@@ -79,15 +80,12 @@ actor DefaultAPODRepository: APODRepository {
         }
     }
     
-    /// Returns the cached result only when its date matches the requested
-    /// date. Serving a different day's picture while pretending it's the
-    /// one the user asked for would be worse than an error.
-    private func cachedResult(matching date: APODDate) async -> APODResult? {
-        guard
-            let cached = await metadataStore.load(),
-            let cachedAPODDate = APODDate(date: cached.date),
-            cachedAPODDate == date
-        else { return nil }
+    /// Returns whatever APOD is in the cache, regardless of date. The view
+    /// model marks the result as `.cache` so the UI can show the "Offline —
+    /// showing last saved picture" badge to communicate that the data may
+    /// not be the date the user asked for.
+    private func cachedResultIfAvailable() async -> APODResult? {
+        guard let cached = await metadataStore.load() else { return nil }
         return APODResult(apod: cached, source: .cache)
     }
     

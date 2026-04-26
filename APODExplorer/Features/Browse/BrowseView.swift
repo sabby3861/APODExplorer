@@ -31,7 +31,6 @@ struct BrowseView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .navigationTitle("Browse")
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Browse tab. Coming in a future release.")
         }
