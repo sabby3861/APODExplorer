@@ -8,11 +8,33 @@
 import SwiftUI
 
 struct RootTabView: View {
+    let dependencies: AppDependencies
+    
+    @State private var todayViewModel: TodayViewModel
+    
+    init(dependencies: AppDependencies) {
+        self.dependencies = dependencies
+        self._todayViewModel = State(
+            initialValue: TodayViewModel(repository: dependencies.repository)
+        )
+    }
+    
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        TabView {
+            Tab("Today", systemImage: "photo.on.rectangle.angled") {
+                TodayView(
+                    viewModel: todayViewModel,
+                    mediaLoader: dependencies.repository
+                )
+            }
+            
+            Tab("Browse", systemImage: "calendar") {
+                BrowseView()
+            }
+        }
     }
 }
 
 #Preview {
-    RootTabView()
+    RootTabView(dependencies: AppDependencies(repository: PreviewMocks.previewRepository))
 }

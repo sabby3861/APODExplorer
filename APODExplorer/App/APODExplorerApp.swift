@@ -9,9 +9,11 @@ import SwiftUI
 
 @main
 struct APODExplorerApp: App {
+    @State private var dependencies = AppDependencies()
+
     var body: some Scene {
         WindowGroup {
-            RootTabView()
+            RootTabView(dependencies: dependencies)
         }
     }
 }
