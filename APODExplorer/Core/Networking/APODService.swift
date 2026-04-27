@@ -27,7 +27,7 @@ struct DefaultAPODService: APODService {
     
     init(
         networkClient: NetworkClient,
-        apiKey: String = "uKfIgQoOHke3jcuokrv0NWbvYAYDldsqjkCw5z1b",
+        apiKey: String = "DEMO_KEY",
         baseURL: URL = DefaultAPODService.defaultBaseURL
     ) {
         self.networkClient = networkClient
