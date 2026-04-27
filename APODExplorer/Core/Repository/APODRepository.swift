@@ -4,9 +4,10 @@
 //
 //  Created by Sanjay Kumar on 24/04/2026.
 //
-//  Coordinates the APOD service and the on-disk cache. Owns the offline
-//  fallback rule: if the network call fails, return cache only when the
-//  cached date matches the requested date.
+///  Coordinates the APOD service and the on-disk cache. Owns the offline
+//  fallback rule: if the network is unreachable or the service fails, return
+//  whatever APOD is in the cache (regardless of date). The view model marks
+//  cached results so the UI can show an offline badge.
 //
 
 import Foundation
@@ -53,13 +54,12 @@ actor DefaultAPODRepository: APODRepository {
     }
     
     func fetchAPOD(for date: APODDate) async throws -> APODResult {
-        // If we already know we're offline, skip the timeout and go straight
-        // to cache. The brief: "last service call should be cached and
-        // loaded if any subsequent service call fails." We honour that
-        // literally — if we have any cached APOD, serve it with the offline
-        // source flag, even if the requested date doesn't match.
+        // If we already know we're offline, skip the timeout. Try the
+        // exact-date cache first; fall back to the most recently saved
+        // entry to honour the brief's "last service call should be loaded
+        // if subsequent calls fail" guarantee.
         if await !networkMonitor.isReachable {
-            if let cached = await cachedResultIfAvailable() {
+            if let cached = await cachedResult(for: date) {
                 return cached
             }
             throw APODError.network(underlying: URLError(.notConnectedToInternet))
@@ -70,7 +70,7 @@ actor DefaultAPODRepository: APODRepository {
             await metadataStore.save(fresh)
             return APODResult(apod: fresh, source: .fresh)
         } catch {
-            if let cached = await cachedResultIfAvailable() {
+            if let cached = await cachedResult(for: date) {
                 return cached
             }
             if let apodError = error as? APODError {
@@ -80,13 +80,17 @@ actor DefaultAPODRepository: APODRepository {
         }
     }
     
-    /// Returns whatever APOD is in the cache, regardless of date. The view
-    /// model marks the result as `.cache` so the UI can show the "Offline —
-    /// showing last saved picture" badge to communicate that the data may
-    /// not be the date the user asked for.
-    private func cachedResultIfAvailable() async -> APODResult? {
-        guard let cached = await metadataStore.load() else { return nil }
-        return APODResult(apod: cached, source: .cache)
+    /// Looks up cache for the requested date first; if not found, returns
+    /// the most recently saved entry. Either way, the source is tagged as
+    /// `.cache` so the UI can display the offline badge.
+    private func cachedResult(for date: APODDate) async -> APODResult? {
+        if let exact = await metadataStore.load(for: date) {
+            return APODResult(apod: exact, source: .cache)
+        }
+        if let latest = await metadataStore.loadLatest() {
+            return APODResult(apod: latest, source: .cache)
+        }
+        return nil
     }
     
     func fetchMedia(for apod: APOD) async throws -> Data {

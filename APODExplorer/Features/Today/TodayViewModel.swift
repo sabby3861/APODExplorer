@@ -20,18 +20,18 @@ final class TodayViewModel {
         case loaded(APODResult)
         case failed(APODError)
     }
-    
+
     private(set) var state: ViewState = .idle
     var selectedDate: APODDate
     var isShowingDatePicker: Bool = false
-    
+
     private let repository: APODRepository
-    
+
     init(repository: APODRepository, initialDate: APODDate = .today()) {
         self.repository = repository
         self.selectedDate = initialDate
     }
-    
+
     // Only fetches on first appearance. Subsequent tab-switches don't refetch;
     // pull-to-refresh covers the "force reload" case.
     func onAppear() async {
@@ -39,25 +39,37 @@ final class TodayViewModel {
             await loadAPOD(for: selectedDate)
         }
     }
-    
+
     func refresh() async {
         await loadAPOD(for: selectedDate)
     }
-    
+
     func selectDate(_ date: APODDate) async {
         guard date != selectedDate else { return }
         selectedDate = date
         await loadAPOD(for: date)
     }
-    
+
     private func loadAPOD(for date: APODDate) async {
         state = .loading
         do {
             let result = try await repository.fetchAPOD(for: date)
+            // When the repository serves a cached APOD whose date differs from
+            // what we requested (e.g. offline fallback returning yesterday's
+            // saved entry), sync `selectedDate` so the date picker reflects
+            // what the user is actually looking at.
+            if result.source == .cache,
+               let resolvedDate = APODDate(date: result.apod.date),
+               resolvedDate != selectedDate {
+                selectedDate = resolvedDate
+            }
             state = .loaded(result)
         } catch let error as APODError {
             state = .failed(error)
         } catch {
+            // Fallback — the repository is designed to only throw APODError,
+            // but the protocol signature is untyped so we handle the general
+            // case defensively.
             state = .failed(.unknown(description: error.localizedDescription))
         }
     }

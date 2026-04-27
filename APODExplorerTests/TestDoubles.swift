@@ -72,13 +72,40 @@ actor MockNetworkMonitor: NetworkMonitor {
 // MARK: - Mock Metadata Store
 
 actor MockMetadataStore: APODMetadataStore {
-    private var stored: APOD?
+    private var entries: [String: APOD] = [:]
+    private var latestKey: String?
     
-    func setStored(_ apod: APOD?) { self.stored = apod }
+    /// Test helper: pre-populate one entry, treated as both the date-keyed
+    /// entry and the latest. Equivalent to calling save().
+    func setStored(_ apod: APOD?) {
+        guard let apod, let date = APODDate(date: apod.date) else {
+            entries.removeAll()
+            latestKey = nil
+            return
+        }
+        entries[date.apiString] = apod
+        latestKey = date.apiString
+    }
     
-    func load() async -> APOD? { stored }
-    func save(_ apod: APOD) async { stored = apod }
-    func clear() async { stored = nil }
+    func load(for date: APODDate) async -> APOD? {
+        entries[date.apiString]
+    }
+    
+    func loadLatest() async -> APOD? {
+        guard let key = latestKey else { return nil }
+        return entries[key]
+    }
+    
+    func save(_ apod: APOD) async {
+        guard let date = APODDate(date: apod.date) else { return }
+        entries[date.apiString] = apod
+        latestKey = date.apiString
+    }
+    
+    func clear() async {
+        entries.removeAll()
+        latestKey = nil
+    }
 }
 
 // MARK: - Mock Media Cache

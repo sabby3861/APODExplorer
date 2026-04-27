@@ -31,19 +31,19 @@ actor DefaultAPODMediaCache: APODMediaCache {
     ) {
         self.fileManager = fileManager
         self.maxBytes = maxBytes
-        let baseDirectory = directory ?? Self.cachesDirectory(fileManager: fileManager)
+        let baseDirectory = directory ?? Self.appSupportDirectory(fileManager: fileManager)
         self.directory = baseDirectory.appendingPathComponent("APODMedia", isDirectory: true)
         if !fileManager.fileExists(atPath: self.directory.path) {
             try? fileManager.createDirectory(at: self.directory, withIntermediateDirectories: true)
         }
     }
     
-    private static func cachesDirectory(fileManager: FileManager) -> URL {
-        fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
+    private static func appSupportDirectory(fileManager: FileManager) -> URL {
+        fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
         ?? fileManager.temporaryDirectory
     }
     
-    /// Rebuild accessOrder from files on disk. Without this files left
+    /// Rebuild accessOrder from files on disk. Without this, files left over
     /// from a previous launch would be invisible to the LRU tracker and the
     /// cache would grow unbounded across sessions.
     private func initializeIfNeeded() {
@@ -84,9 +84,7 @@ actor DefaultAPODMediaCache: APODMediaCache {
     func clear() async {
         initializeIfNeeded()
         accessOrder.removeAll()
-        guard let contents = try? fileManager.contentsOfDirectory(
-            at: directory, includingPropertiesForKeys: nil
-        ) else {
+        guard let contents = try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else {
             return
         }
         for fileURL in contents {

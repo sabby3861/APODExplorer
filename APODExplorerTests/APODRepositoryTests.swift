@@ -48,7 +48,7 @@ struct APODRepositoryTests {
         #expect(result.apod == fixture)
         #expect(service.capturedDates == [date], "Repository should request the date the caller asked for")
 
-        let persisted = await store.load()
+        let persisted = await store.loadLatest()
         #expect(persisted == fixture)
     }
 
@@ -121,7 +121,7 @@ struct APODRepositoryTests {
         let date = try #require(APODDate(date: newFixture.date))
         _ = try await repository.fetchAPOD(for: date)
 
-        let persisted = await store.load()
+        let persisted = await store.loadLatest()
         #expect(persisted == newFixture)
     }
 
@@ -241,7 +241,6 @@ struct APODRepositoryTests {
             _ = try await repository.fetchAPOD(for: date)
             Issue.record("Expected fetchAPOD to throw")
         } catch let error as APODError {
-            // Asserting on the specific case, not just the type.
             guard case .network = error else {
                 Issue.record("Expected .network error, got \(error)")
                 return
@@ -249,5 +248,52 @@ struct APODRepositoryTests {
         } catch {
             Issue.record("Expected APODError, got \(type(of: error))")
         }
+    }
+
+    @Test("Offline with cache hit for exact date returns that date's APOD")
+    func offlineWithExactDateHitReturnsExact() async throws {
+        // Multiple dates have been saved across previous online sessions.
+        // Going offline and asking for one specific date returns THAT
+        // date's APOD, not the most recent.
+        let dayA = APODFixture.image(date: Date(timeIntervalSince1970: 1_600_000_000))
+        let dayB = APODFixture.image(date: Date(timeIntervalSince1970: 1_700_000_000))
+
+        let store = MockMetadataStore()
+        await store.save(dayA)
+        await store.save(dayB)  // dayB is now "latest"
+
+        let repository = makeRepository(
+            service: MockAPODService(),
+            metadataStore: store,
+            networkMonitor: MockNetworkMonitor(isReachable: false)
+        )
+
+        let dayADate = try #require(APODDate(date: dayA.date))
+        let result = try await repository.fetchAPOD(for: dayADate)
+
+        #expect(result.source == .cache)
+        #expect(result.apod == dayA, "Should return dayA, not the most recent dayB")
+    }
+
+    @Test("Offline cache miss falls back to latest saved entry")
+    func offlineCacheMissFallsBackToLatest() async throws {
+        // Cache has dayA only. User requests dayB. We don't have dayB cached
+        // so we fall back to the latest saved entry (dayA).
+        let dayA = APODFixture.image(date: Date(timeIntervalSince1970: 1_600_000_000))
+
+        let store = MockMetadataStore()
+        await store.save(dayA)
+
+        let repository = makeRepository(
+            service: MockAPODService(),
+            metadataStore: store,
+            networkMonitor: MockNetworkMonitor(isReachable: false)
+        )
+
+        let differentDate = try #require(APODDate(date: Date(timeIntervalSince1970: 1_700_000_000)))
+        let result = try await repository.fetchAPOD(for: differentDate)
+
+        #expect(result.source == .cache)
+        #expect(result.apod == dayA, "Should fall back to the only saved entry")
     }
 }

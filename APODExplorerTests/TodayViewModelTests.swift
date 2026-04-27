@@ -158,4 +158,22 @@ struct TodayViewModelTests {
         }
         #expect(result.apod == fixture)
     }
+    
+    @Test("Cached result with different date syncs selectedDate to displayed APOD")
+    func cachedResultSyncsSelectedDate() async throws {
+        // Repository returns a cached APOD whose date doesn't match what
+        // selectDate requested. The view model should adopt the cached
+        // APOD's date so the date picker reflects what the user is seeing.
+        let cachedFixture = APODFixture.image(date: Date(timeIntervalSince1970: 1_600_000_000))
+        let repository = StubRepository()
+        repository.stubbedAPOD = .success(APODResult(apod: cachedFixture, source: .cache))
+        
+        let viewModel = TodayViewModel(repository: repository)
+        
+        let requestedDate = try #require(APODDate(date: Date(timeIntervalSince1970: 1_700_000_000)))
+        await viewModel.selectDate(requestedDate)
+        
+        let cachedAPODDate = try #require(APODDate(date: cachedFixture.date))
+        #expect(viewModel.selectedDate == cachedAPODDate)
+    }
 }
